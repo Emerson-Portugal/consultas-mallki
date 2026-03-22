@@ -15,8 +15,8 @@ import Container from "../components/elements/Container.astro";
         Descarga tu comprobante
       </h1>
       <p class="font-sans-pro text-lg leading-relaxed text-base-700 sm:text-xl md:text-[1.25rem] md:leading-relaxed">
-        Ingresa el número SUNAT y el código de seguridad de 3 caracteres impresos en tu ticket. Se descargará un
-        archivo ZIP con PDF, XML y constancia SUNAT (CDR), si está disponible.
+        Ingresa la serie, el correlativo y el código de seguridad de 3 caracteres tal como figuran en tu ticket. Se
+        descargará un ZIP con el PDF, el XML UBL y, si ya está disponible, la constancia de recepción SUNAT (CDR).
       </p>
     </div>
 
@@ -26,20 +26,36 @@ import Container from "../components/elements/Container.astro";
       novalidate
     >
       <div class="flex flex-col gap-2 text-left">
-        <label for="numero" class="text-sm font-medium tracking-normal text-base-600 sm:text-base"
-          >Número SUNAT</label
-        >
-        <input
-          id="numero"
-          name="numero"
-          type="text"
-          required
-          minlength="4"
-          maxlength="20"
-          autocomplete="off"
-          placeholder="Ej. F001-00000005 o F001-5"
-          class="w-full rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal tracking-normal text-base-900 placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
-        />
+        <span class="text-sm font-medium tracking-normal text-base-600 sm:text-base">Número SUNAT</span>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+          <div class="flex min-w-0 flex-col gap-2">
+            <label for="serie" class="text-12 font-medium text-base-500">Serie</label>
+            <input
+              id="serie"
+              name="serie"
+              type="text"
+              required
+              maxlength="10"
+              autocomplete="off"
+              placeholder="Ej. F001, FMK1"
+              class="w-full min-w-0 rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal tracking-normal text-base-900 placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
+            />
+          </div>
+          <div class="flex min-w-0 flex-col gap-2">
+            <label for="correlativo" class="text-12 font-medium text-base-500">Correlativo</label>
+            <input
+              id="correlativo"
+              name="correlativo"
+              type="text"
+              inputmode="numeric"
+              required
+              maxlength="15"
+              autocomplete="off"
+              placeholder="Ej. 5, 001, 1002"
+              class="w-full min-w-0 rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal tracking-normal text-base-900 placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
+            />
+          </div>
+        </div>
       </div>
       <div class="flex flex-col gap-2 text-left">
         <label for="codigo" class="text-sm font-medium tracking-normal text-base-600 sm:text-base"
@@ -65,17 +81,18 @@ import Container from "../components/elements/Container.astro";
       >
         Descargar ZIP
       </button>
-      <button
-        type="button"
-        id="btn-nueva-pestana"
-        class="text-sm font-medium tracking-normal text-base-600 underline underline-offset-4 hover:text-base-800 sm:text-base"
-      >
-        Abrir descarga en nueva pestaña
-      </button>
-      <p class="text-sm text-base-500 text-center max-w-md leading-relaxed sm:text-base">
-        Si el navegador bloquea la descarga (p. ej. política CORS), use la opción de nueva pestaña: el archivo se
-        obtiene directamente del servidor.
-      </p>
+      <div id="fallback-nueva-pestana" class="hidden flex flex-col items-center gap-3" aria-live="polite">
+        <p class="text-sm text-base-500 text-center max-w-md leading-relaxed sm:text-base">
+          Puede intentar abrir el mismo enlace en una nueva pestaña; a veces el navegador permite la descarga así.
+        </p>
+        <button
+          type="button"
+          id="btn-nueva-pestana"
+          class="text-sm font-medium tracking-normal text-base-600 underline underline-offset-4 hover:text-base-800 sm:text-base"
+        >
+          Abrir descarga en nueva pestaña
+        </button>
+      </div>
     </form>
   </Container>
 </Layout>
@@ -83,8 +100,9 @@ import Container from "../components/elements/Container.astro";
 <script>
   import {
     buildPublicZipUrl,
+    componerNumeroSunat,
     descargarComprobanteZip,
-    validarParametrosZip,
+    validarSerieCorrelativoCodigo,
   } from "../lib/descargaComprobante";
 
   const intro = document.getElementById("intro-descarga");
@@ -100,6 +118,11 @@ import Container from "../components/elements/Container.astro";
   const errEl = document.getElementById("mensaje-error") as HTMLParagraphElement;
   const btn = document.getElementById("btn-descargar") as HTMLButtonElement;
   const btnNueva = document.getElementById("btn-nueva-pestana") as HTMLButtonElement;
+  const fallbackNueva = document.getElementById("fallback-nueva-pestana") as HTMLDivElement;
+
+  function setFallbackVisible(show: boolean) {
+    fallbackNueva.classList.toggle("hidden", !show);
+  }
 
   function setError(msg: string | null) {
     if (!msg) {
@@ -112,16 +135,31 @@ import Container from "../components/elements/Container.astro";
   }
 
   function leerCampos() {
-    const numero = (document.getElementById("numero") as HTMLInputElement).value;
+    const serie = (document.getElementById("serie") as HTMLInputElement).value;
+    const correlativo = (document.getElementById("correlativo") as HTMLInputElement).value;
     const codigo = (document.getElementById("codigo") as HTMLInputElement).value;
-    return { numero, codigo };
+    const numero = componerNumeroSunat(serie, correlativo);
+    return { serie, correlativo, numero, codigo };
+  }
+
+  function alCambiarCampos() {
+    setFallbackVisible(false);
+  }
+  for (const id of ["serie", "correlativo", "codigo"]) {
+    document.getElementById(id)?.addEventListener("input", alCambiarCampos);
   }
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     setError(null);
+    setFallbackVisible(false);
 
-    const { numero, codigo } = leerCampos();
+    const { serie, correlativo, numero, codigo } = leerCampos();
+    const v = validarSerieCorrelativoCodigo(serie, correlativo, codigo);
+    if (v) {
+      setError(v);
+      return;
+    }
 
     btn.disabled = true;
     const res = await descargarComprobanteZip(numero, codigo);
@@ -129,19 +167,21 @@ import Container from "../components/elements/Container.astro";
 
     if (!res.ok) {
       setError(res.mensaje);
+      setFallbackVisible(!!res.mostrarAlternativaNuevaPestana);
       return;
     }
     setError(null);
+    setFallbackVisible(false);
   });
 
   btnNueva?.addEventListener("click", () => {
-    setError(null);
-    const { numero, codigo } = leerCampos();
-    const v = validarParametrosZip(numero, codigo);
+    const { serie, correlativo, numero, codigo } = leerCampos();
+    const v = validarSerieCorrelativoCodigo(serie, correlativo, codigo);
     if (v) {
       setError(v);
       return;
     }
+    setError(null);
     const url = buildPublicZipUrl(numero, codigo);
     window.open(url, "_blank", "noopener,noreferrer");
   });

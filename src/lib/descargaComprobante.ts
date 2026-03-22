@@ -12,17 +12,44 @@ export function buildPublicZipUrl(numero: string, codigoSeguridad: string): stri
   return url.toString();
 }
 
+/**
+ * Une serie + correlativo al formato del API: `F001-5`, `FMK1-1002`, `F001-00000005`.
+ * No rellena con ceros: el backend acepta formato corto o completo.
+ */
+export function componerNumeroSunat(serie: string, correlativo: string): string {
+  const s = serie.trim().replace(/\s+/g, "");
+  const c = correlativo.trim().replace(/\s+/g, "");
+  if (!s || !c) return "";
+  return `${s}-${c}`;
+}
+
 /** Valida antes de llamar al API (límites del contrato). */
 export function validarParametrosZip(numero: string, codigo: string): string | null {
   const n = numero.trim();
   const c = codigo.trim().toUpperCase();
   if (n.length < 4 || n.length > 20) {
-    return "El número SUNAT debe tener entre 4 y 20 caracteres (ej. F001-00000005 o F001-5).";
+    return "El número SUNAT debe tener entre 4 y 20 caracteres (serie + correlativo, ej. F001-5).";
   }
   if (c.length !== 3) {
     return "El código de seguridad debe tener exactamente 3 caracteres.";
   }
   return null;
+}
+
+/** Valida serie y correlativo por separado y el código; devuelve mensaje o null si OK. */
+export function validarSerieCorrelativoCodigo(
+  serie: string,
+  correlativo: string,
+  codigo: string
+): string | null {
+  if (!serie.trim()) {
+    return "Ingrese la serie del comprobante (ej. F001 o FMK1).";
+  }
+  if (!correlativo.trim()) {
+    return "Ingrese el correlativo (ej. 5, 001 o 1002).";
+  }
+  const numero = componerNumeroSunat(serie, correlativo);
+  return validarParametrosZip(numero, codigo);
 }
 
 function mensajePorStatus(status: number): string {
@@ -66,7 +93,7 @@ function nombreArchivoZipDesdeHeaders(
 
 export type ResultadoDescarga =
   | { ok: true }
-  | { ok: false; mensaje: string };
+  | { ok: false; mensaje: string; mostrarAlternativaNuevaPestana?: boolean };
 
 /**
  * Descarga el ZIP (PDF + XML + CDR) vía GET público (sin JWT).
@@ -87,7 +114,8 @@ export async function descargarComprobanteZip(
     return {
       ok: false,
       mensaje:
-        "No se pudo conectar con el servidor. Si persiste, puede ser un bloqueo de red o CORS; pruebe otra red o contacte al administrador.",
+        "No se pudo conectar con el servidor. Puede ser un bloqueo de red o de seguridad del navegador (CORS).",
+      mostrarAlternativaNuevaPestana: true,
     };
   }
 
@@ -95,20 +123,28 @@ export async function descargarComprobanteZip(
     return { ok: false, mensaje: mensajePorStatus(res.status) };
   }
 
-  const blob = await res.blob();
-  const disp = res.headers.get("Content-Disposition");
-  const safeNum = numero.trim().replace(/[^\w.-]/g, "_");
-  const nombre = nombreArchivoZipDesdeHeaders(disp, `${safeNum}.zip`);
+  try {
+    const blob = await res.blob();
+    const disp = res.headers.get("Content-Disposition");
+    const safeNum = numero.trim().replace(/[^\w.-]/g, "_");
+    const nombre = nombreArchivoZipDesdeHeaders(disp, `${safeNum}.zip`);
 
-  const href = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = href;
-  a.download = nombre;
-  a.rel = "noopener";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(href);
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = nombre;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(href);
 
-  return { ok: true };
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      mensaje: "No se pudo iniciar la descarga del archivo en este navegador.",
+      mostrarAlternativaNuevaPestana: true,
+    };
+  }
 }
