@@ -1,0 +1,11 @@
+# Blueprint Render: Static Site
+# Tras el primer deploy, en Environment añade PUBLIC_SITE_URL con la URL pública (ej. https://xxx.onrender.com)
+services:
+  - type: web
+    name: factutas-consulta
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: PUBLIC_SITE_URL
+        sync: false
