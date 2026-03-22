@@ -23,6 +23,15 @@ export function componerNumeroSunat(serie: string, correlativo: string): string 
   return `${s}-${c}`;
 }
 
+/** Serie SUNAT típica (alfanumérico, sin espacios raros). */
+const RE_SERIE = /^[A-Za-z0-9]{1,10}$/;
+/** Correlativo numérico (acepta ceros a la izquierda). */
+const RE_CORRELATIVO = /^[0-9]{1,15}$/;
+/** Código de seguridad del ticket: 3 caracteres alfanuméricos. */
+const RE_CODIGO_SEGURIDAD = /^[A-Za-z0-9]{3}$/;
+/** Formato compuesto serie-correlativo coherente con componerNumeroSunat. */
+const RE_NUMERO_SUNAT = /^[A-Za-z0-9]{1,10}-[0-9]{1,15}$/;
+
 /** Valida antes de llamar al API (límites del contrato). */
 export function validarParametrosZip(numero: string, codigo: string): string | null {
   const n = numero.trim();
@@ -30,8 +39,14 @@ export function validarParametrosZip(numero: string, codigo: string): string | n
   if (n.length < 4 || n.length > 20) {
     return "El número SUNAT debe tener entre 4 y 20 caracteres (serie + correlativo, ej. F001-5).";
   }
+  if (!RE_NUMERO_SUNAT.test(n)) {
+    return "Formato de número SUNAT inválido (use serie y correlativo permitidos).";
+  }
   if (c.length !== 3) {
     return "El código de seguridad debe tener exactamente 3 caracteres.";
+  }
+  if (!RE_CODIGO_SEGURIDAD.test(c)) {
+    return "El código de seguridad solo puede incluir letras y números (ej. A1R).";
   }
   return null;
 }
@@ -42,11 +57,19 @@ export function validarSerieCorrelativoCodigo(
   correlativo: string,
   codigo: string
 ): string | null {
-  if (!serie.trim()) {
+  const s = serie.trim();
+  const corr = correlativo.trim();
+  if (!s) {
     return "Ingrese la serie del comprobante (ej. F001 o FMK1).";
   }
-  if (!correlativo.trim()) {
+  if (!corr) {
     return "Ingrese el correlativo (ej. 5, 001 o 1002).";
+  }
+  if (!RE_SERIE.test(s)) {
+    return "La serie solo puede incluir letras y números (máx. 10 caracteres).";
+  }
+  if (!RE_CORRELATIVO.test(corr)) {
+    return "El correlativo solo puede incluir dígitos (máx. 15).";
   }
   const numero = componerNumeroSunat(serie, correlativo);
   return validarParametrosZip(numero, codigo);
@@ -91,6 +114,18 @@ function nombreArchivoZipDesdeHeaders(
   return fallback;
 }
 
+/**
+ * Evita rutas y caracteres raros en el nombre sugerido por el servidor (Content-Disposition).
+ */
+function sanitizeDownloadFilename(raw: string, fallback: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return fallback;
+  const base = trimmed.split(/[/\\]/).pop() ?? "";
+  if (!base || base.includes("..")) return fallback;
+  const safe = base.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 200);
+  return safe || fallback;
+}
+
 export type ResultadoDescarga =
   | { ok: true }
   | { ok: false; mensaje: string; mostrarAlternativaNuevaPestana?: boolean };
@@ -127,7 +162,8 @@ export async function descargarComprobanteZip(
     const blob = await res.blob();
     const disp = res.headers.get("Content-Disposition");
     const safeNum = numero.trim().replace(/[^\w.-]/g, "_");
-    const nombre = nombreArchivoZipDesdeHeaders(disp, `${safeNum}.zip`);
+    const sugerido = nombreArchivoZipDesdeHeaders(disp, `${safeNum}.zip`);
+    const nombre = sanitizeDownloadFilename(sugerido, `${safeNum}.zip`);
 
     const href = URL.createObjectURL(blob);
     const a = document.createElement("a");
