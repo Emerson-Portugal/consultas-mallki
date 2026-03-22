@@ -1,0 +1,43 @@
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+    font-family: var(--font-grunge);
+    text-transform: uppercase;
+    color: var(--color-base-900);
+    letter-spacing: -0.025em;
+    line-height: 1;
+}
+
+.markdown-content p {
+    font-family: var(--font-mono);
+    color: var(--color-base-900);
+    line-height: 200%;
+}
+
+.markdown-content h1 { font-size: var(--text-96); }
+.markdown-content h2 { font-size: var(--text-64); }
+.markdown-content h3 { font-size: var(--text-40); }
+.markdown-content h4 { font-size: var(--text-32); }
+.markdown-content h5 { font-size: var(--text-20); }
+.markdown-content h6 { font-size: var(--text-16); }
+
+@media (min-width: 768px) {
+  .markdown-content h1 { font-size: var(--text-128); }
+  .markdown-content h2 { font-size: var(--text-80); }
+  .markdown-content h3 { font-size: var(--text-48); }
+  .markdown-content h4 { font-size: var(--text-40); }
+  .markdown-content h5 { font-size: var(--text-24); }
+  .markdown-content h6 { font-size: var(--text-20); }
+}
+
+@media (min-width: 1200px) {
+  .markdown-content h1 { font-size: var(--text-216); }
+  .markdown-content h2 { font-size: var(--text-128); }
+  .markdown-content h3 { font-size: var(--text-80); }
+  .markdown-content h4 { font-size: var(--text-48); }
+  .markdown-content h5 { font-size: var(--text-32); }
+  .markdown-content h6 { font-size: var(--text-24); }
+}

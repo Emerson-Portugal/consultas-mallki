@@ -1,0 +1,148 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Container from "../components/elements/Container.astro";
+---
+
+<Layout title="Consulta de comprobante">
+  <Container variant="xl" class="flex flex-col items-center gap-10 pb-24 pt-4 sm:pt-6">
+    <div
+      id="intro-descarga"
+      class="flex max-w-2xl cursor-default flex-col gap-5 px-2 text-center sm:max-w-3xl sm:px-0"
+      role="region"
+      aria-label="Instrucciones de descarga"
+    >
+      <h1 class="font-sans-pro text-4xl font-semibold leading-tight tracking-tight text-base-900 sm:text-5xl md:text-[3rem] md:leading-[1.15]">
+        Descarga tu comprobante
+      </h1>
+      <p class="font-sans-pro text-lg leading-relaxed text-base-700 sm:text-xl md:text-[1.25rem] md:leading-relaxed">
+        Ingresa el número SUNAT y el código de seguridad de 3 caracteres impresos en tu ticket. Se descargará un
+        archivo ZIP con PDF, XML y constancia SUNAT (CDR), si está disponible.
+      </p>
+    </div>
+
+    <form
+      id="form-consulta"
+      class="font-sans-pro flex w-full max-w-md flex-col gap-6"
+      novalidate
+    >
+      <div class="flex flex-col gap-2 text-left">
+        <label for="numero" class="text-sm font-medium tracking-normal text-base-600 sm:text-base"
+          >Número SUNAT</label
+        >
+        <input
+          id="numero"
+          name="numero"
+          type="text"
+          required
+          minlength="4"
+          maxlength="20"
+          autocomplete="off"
+          placeholder="Ej. F001-00000005 o F001-5"
+          class="w-full rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal tracking-normal text-base-900 placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
+        />
+      </div>
+      <div class="flex flex-col gap-2 text-left">
+        <label for="codigo" class="text-sm font-medium tracking-normal text-base-600 sm:text-base"
+          >Código de seguridad</label
+        >
+        <input
+          id="codigo"
+          name="codigo"
+          type="text"
+          required
+          minlength="3"
+          maxlength="3"
+          autocomplete="off"
+          placeholder="Ej. A1R"
+          class="w-full rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal uppercase tracking-wider text-base-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
+        />
+      </div>
+      <p id="mensaje-error" class="hidden text-sm text-red-400 sm:text-base" role="alert"></p>
+      <button
+        type="submit"
+        id="btn-descargar"
+        class="rounded bg-base-900 px-6 py-3.5 text-base font-semibold tracking-normal text-base-100 hover:bg-base-800 focus:outline-none focus:ring-2 focus:ring-base-700 disabled:cursor-not-allowed disabled:opacity-60 sm:text-lg"
+      >
+        Descargar ZIP
+      </button>
+      <button
+        type="button"
+        id="btn-nueva-pestana"
+        class="text-sm font-medium tracking-normal text-base-600 underline underline-offset-4 hover:text-base-800 sm:text-base"
+      >
+        Abrir descarga en nueva pestaña
+      </button>
+      <p class="text-sm text-base-500 text-center max-w-md leading-relaxed sm:text-base">
+        Si el navegador bloquea la descarga (p. ej. política CORS), use la opción de nueva pestaña: el archivo se
+        obtiene directamente del servidor.
+      </p>
+    </form>
+  </Container>
+</Layout>
+
+<script>
+  import {
+    buildPublicZipUrl,
+    descargarComprobanteZip,
+    validarParametrosZip,
+  } from "../lib/descargaComprobante";
+
+  const intro = document.getElementById("intro-descarga");
+  intro?.addEventListener(
+    "pointerdown",
+    () => {
+      window.dispatchEvent(new CustomEvent("mallki:hide-header"));
+    },
+    { passive: true }
+  );
+
+  const form = document.getElementById("form-consulta") as HTMLFormElement;
+  const errEl = document.getElementById("mensaje-error") as HTMLParagraphElement;
+  const btn = document.getElementById("btn-descargar") as HTMLButtonElement;
+  const btnNueva = document.getElementById("btn-nueva-pestana") as HTMLButtonElement;
+
+  function setError(msg: string | null) {
+    if (!msg) {
+      errEl.textContent = "";
+      errEl.classList.add("hidden");
+      return;
+    }
+    errEl.textContent = msg;
+    errEl.classList.remove("hidden");
+  }
+
+  function leerCampos() {
+    const numero = (document.getElementById("numero") as HTMLInputElement).value;
+    const codigo = (document.getElementById("codigo") as HTMLInputElement).value;
+    return { numero, codigo };
+  }
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    setError(null);
+
+    const { numero, codigo } = leerCampos();
+
+    btn.disabled = true;
+    const res = await descargarComprobanteZip(numero, codigo);
+    btn.disabled = false;
+
+    if (!res.ok) {
+      setError(res.mensaje);
+      return;
+    }
+    setError(null);
+  });
+
+  btnNueva?.addEventListener("click", () => {
+    setError(null);
+    const { numero, codigo } = leerCampos();
+    const v = validarParametrosZip(numero, codigo);
+    if (v) {
+      setError(v);
+      return;
+    }
+    const url = buildPublicZipUrl(numero, codigo);
+    window.open(url, "_blank", "noopener,noreferrer");
+  });
+</script>

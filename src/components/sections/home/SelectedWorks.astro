@@ -1,0 +1,31 @@
+---
+// components
+import Container from "../../elements/Container.astro";
+import Heading from "../../elements/Heading.astro";
+import Work from "../../elements/Work.astro";
+import Link from "../../elements/Link.astro";
+
+// content collections
+import { getCollection } from "astro:content";
+const works = await getCollection("works");
+const featuredWorks = works.filter(work => work.data.isFeatured === true);
+---
+
+<Container variant={'lg'} class="items-center">
+    <Heading tagName="h2" tagSize="h2" class="text-center">
+        Featured Works
+    </Heading>
+    <Container class="grid lg:grid-cols-2 grid-cols-1 gap-16">
+        {featuredWorks.map((work) => (
+            <Work 
+                slug={work.data.slug}
+                featuredImage={work.data.featuredImage}
+                title={work.data.title}
+                client={work.data.client}
+                category={work.data.category}>
+            </Work>
+        ))
+        }
+    </Container>
+    <Link variant={'button'} href="/works">All Works</Link>
+</Container>

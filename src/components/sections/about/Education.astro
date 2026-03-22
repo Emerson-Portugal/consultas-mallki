@@ -1,0 +1,38 @@
+---
+// components
+import Container from "../../elements/Container.astro";
+import Heading from "../../elements/Heading.astro";
+import ResumeDropdown from "../../elements/ResumeDropdown.astro";
+import ContainerBottom from "../../elements/ContainerBottom.astro";
+
+// content
+const education = [
+    { 
+        title: "Bachelor of Fine Arts in Graphic Design",
+        place: "California College of the Arts",
+        period: "2013 - 2017",
+        text: "Concentrated in visual communication and digital design with coursework in typography, color theory, user experience, and brand strategy."
+    },
+    { 
+        title: "UX Design Bootcamp Certificate",
+        place: "General Assembly",
+        period: "2018",
+        text: "Intensive 12-week program covering user research methodologies, information architecture, prototyping, and usability testing."
+    }
+]
+---
+
+<Container variant={'md'}>
+    <Heading tagName="h2" tagSize="h2" class="text-center">Education</Heading>
+    <div class="flex flex-col gap-4">
+        <Container class="flex flex-col gap-4 p-6 border-3 border-base-900">
+            {
+                education.map((i) => (
+                    <ResumeDropdown title={i.title} place={i.place} period={i.period} text={i.text} />
+                ))
+            }
+        </Container>
+        <ContainerBottom /> 
+    </div>
+    
+</Container>

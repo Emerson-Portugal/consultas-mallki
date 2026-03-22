@@ -1,0 +1,21 @@
+---
+import logo from "../../assets/images/logo.png";
+import { getImage } from "astro:assets";
+
+const { pageTitle } = Astro.props;
+
+const favicon32 = await getImage({ src: logo, width: 32, height: 32, format: "png" });
+const appleTouch = await getImage({ src: logo, width: 180, height: 180, format: "png" });
+---
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Consulta y descarga de comprobantes electrónicos — MALLKI-FACTURAS." />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="robots" content="index, follow" />
+  <meta name="googlebot" content="index, follow" />
+  <link rel="icon" type="image/png" href={favicon32.src} sizes="32x32" />
+  <link rel="apple-touch-icon" href={appleTouch.src} />
+  <title>MALLKI-FACTURAS — {pageTitle}</title>
+</head>

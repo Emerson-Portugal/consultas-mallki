@@ -1,0 +1,84 @@
+---
+---
+
+<header
+  id="site-header"
+  class="site-header fixed top-0 left-0 right-0 z-50 flex justify-center px-6 pb-6 pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-8 sm:pb-7 sm:pt-[max(1.75rem,env(safe-area-inset-top))]"
+  aria-label="Marca del sitio"
+>
+  <a
+    href="/"
+    class="font-sans-pro text-3xl font-semibold leading-tight tracking-normal text-base-900 no-underline hover:opacity-90 sm:text-4xl md:text-[2.5rem]"
+  >
+    MALLKI-FACTURAS
+  </a>
+</header>
+
+<style>
+  .site-header {
+    transition:
+      transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0.25s ease;
+    will-change: transform;
+  }
+  .site-header.is-hidden {
+    transform: translate3d(0, -100%, 0);
+    opacity: 0;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .site-header {
+      transition-duration: 0.01ms;
+    }
+  }
+</style>
+
+<script>
+  function initSiteHeader() {
+    const header = document.getElementById("site-header");
+    if (!header) return;
+
+    const TOP_THRESHOLD = 24;
+    const TAP_CLEAR_SCROLL = 72;
+    let lastY = window.scrollY;
+    let headerHiddenByTap = false;
+    let ticking = false;
+
+    function applyScroll() {
+      const y = window.scrollY;
+      if (y > TAP_CLEAR_SCROLL) headerHiddenByTap = false;
+
+      if (y <= TOP_THRESHOLD) {
+        if (!headerHiddenByTap) header.classList.remove("is-hidden");
+        else header.classList.add("is-hidden");
+      } else if (y > lastY) {
+        header.classList.add("is-hidden");
+      } else {
+        header.classList.remove("is-hidden");
+      }
+
+      lastY = y;
+      ticking = false;
+    }
+
+    window.addEventListener("mallki:hide-header", () => {
+      header.classList.add("is-hidden");
+      headerHiddenByTap = true;
+    });
+
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!ticking) {
+          requestAnimationFrame(applyScroll);
+          ticking = true;
+        }
+      },
+      { passive: true }
+    );
+
+    applyScroll();
+  }
+
+  initSiteHeader();
+</script>

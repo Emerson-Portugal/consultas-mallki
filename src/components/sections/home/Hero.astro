@@ -1,0 +1,25 @@
+---
+// components
+import Container from "../../elements/Container.astro"
+import Text from "../../elements/Text.astro"
+import Heading from "../../elements/Heading.astro"
+import ImageContainer from "../../elements/ImageContainer.astro"
+import Link from "../../elements/Link.astro"
+
+// assets
+import peter from "../../../assets/images/peter.jpg";
+---
+
+<Container variant={"xl"} class="flex flex-col gap-8 min-h-screen">
+    <Text variant={'xl'} class="text-base-900 lg:max-w-1/3 md:max-w-1/2 w-full">Hey there! I specialize in crafting unique, eye-catching designs that help small businesses like yours stand out in a crowded market.</Text>
+    <Container class="flex md:flex-row flex-col gap-8">
+        <Container class="md:flex-2 flex flex-col items-start gap-4">
+            <Link variant={'button'} href="/contact">Available for work</Link>
+            <Heading tagName="h1" tagSize="h1">Peter Jones</Heading>
+        </Container>
+        <Container class="h-full md:h-[500px] flex-1">
+            <ImageContainer src={peter} alt="Peter Jones" />
+        </Container>
+    </Container>
+</Container>
+

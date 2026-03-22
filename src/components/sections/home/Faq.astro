@@ -1,0 +1,46 @@
+---
+// components
+import Container from "../../elements/Container.astro";
+import ContainerBottom from "../../elements/ContainerBottom.astro";
+import Heading from "../../elements/Heading.astro";
+import Dropdown from "../../elements/Dropdown.astro";
+
+// content
+const faq = [
+    { 
+        title: "What's your typical project timeline?",
+        text: "Project timelines vary depending on scope and complexity. A simple brand identity might take 3-4 weeks, while a comprehensive web design or app project typically ranges from 6-12 weeks."
+    },
+    { 
+        title: "How do you structure your pricing?",
+        text: "I offer both project-based and hourly pricing depending on the scope of work. Most clients prefer fixed project rates for predictable budgeting. I require a 50% deposit to begin work, with the remainder due upon completion."
+    },
+    { 
+        title: "What's included in your design process?",
+        text: "My process typically includes discovery and strategy, research and concept development, design exploration, revisions based on your feedback, and final delivery of all assets."
+    },
+    { 
+        title: "Do you work with clients remotely?",
+        text: "Absolutely! I work with clients worldwide and have developed efficient remote collaboration processes. We'll use video calls for key meetings, and collaborative design platforms for feedback."
+    },
+    { 
+        title: "How many revisions are included?",
+        text: "Most projects include 2-3 rounds of revisions to ensure we achieve the perfect result. I encourage consolidated feedback to make the most of each revision round."
+    },
+]
+---
+
+<Container variant={'md'}>
+    <Heading tagName="h2" tagSize="h2" class="text-center">FAQ</Heading>
+    <div class="flex flex-col gap-4">
+        <Container class="flex flex-col gap-4 p-6 border-3 border-base-900">
+            {
+                faq.map((q, index) => (
+                    <Dropdown title=`${index + 1}. ${q.title}`  text={q.text} />
+                ))
+            }
+        </Container>
+        <ContainerBottom />        
+    </div>
+    
+</Container>

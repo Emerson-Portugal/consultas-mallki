@@ -1,0 +1,47 @@
+---
+// components
+import Text from "../elements/Text.astro";
+
+// props
+const { title, place, period, text } = Astro.props;
+---
+
+<div class="flex flex-col gap-2 dropdown">
+    <button class="flex flex-col w-full text-left cursor-pointer dropdown-trigger">
+        <div class="flex justify-between items-center">
+            <Text variant={'xl'} class="text-base-900 hover:text-base-700">{title}</Text>
+            <svg 
+              class="dropdown-icon transition-transform duration-200 shrink-0" 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 8 8">
+                <path fill="#ffffff" d="M1.5 1L0 2.5l4 4l4-4L6.5 1L4 3.5L1.5 1z"/>
+            </svg>  
+        </div>
+        <Text variant={'md'}>{place}</Text>
+        <Text variant={'sm'} class="text-base-700">{period}</Text>
+    </button>
+    <div class="dropdown-content hidden overflow-hidden transition-all duration-200">
+        <Text variant={'sm'} class="text-base-900">{text}</Text>
+    </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const dropdowns = document.querySelectorAll('.dropdown');
+    
+    dropdowns.forEach(dropdown => {
+      const trigger = dropdown.querySelector('.dropdown-trigger');
+      const content = dropdown.querySelector('.dropdown-content');
+      const icon = dropdown.querySelector('.dropdown-icon');
+      
+      if (trigger && content) {
+        trigger.addEventListener('click', () => {
+          content.classList.toggle('hidden');
+          icon?.classList.toggle('rotate-180');
+        });
+      }
+    });
+  });
+</script>

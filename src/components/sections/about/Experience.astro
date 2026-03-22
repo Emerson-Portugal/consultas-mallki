@@ -1,0 +1,50 @@
+---
+// components
+import Container from "../../elements/Container.astro";
+import Heading from "../../elements/Heading.astro";
+import ResumeDropdown from "../../elements/ResumeDropdown.astro";
+import ContainerBottom from "../../elements/ContainerBottom.astro";
+
+// content
+const experience = [
+    { 
+        title: "Senior Product Designer",
+        place: "Pixel & Co. Design Studio",
+        period: "2022 - Present",
+        text: "Leading design for high-growth startups and established brands across web, mobile, and product design."
+    },
+    { 
+        title: "UX/UI Designer",
+        place: "TechFlow Solutions",
+        period: "2020 - 2022",
+        text: "Designed and optimized user experiences for B2B software products serving enterprise clients."
+    },
+    { 
+        title: "Brand & Web Designer",
+        place: "Creative Collective Agency",
+        period: "2018 - 2020",
+        text: "Developed comprehensive brand identities and responsive websites for clients ranging from local startups to national retailers."
+    },
+    { 
+        title: "Junior Designer",
+        place: "Innovate Design House",
+        period: "2017 - 2018",
+        text: "Supported senior designers on various projects including print materials, digital assets, and brand campaigns."
+    },
+]
+---
+
+<Container variant={'md'}>
+    <Heading tagName="h2" tagSize="h2" class="text-center">Experience</Heading>
+    <div class="flex flex-col gap-4">  
+        <Container class="flex flex-col gap-4 p-6 border-3 border-base-900">
+            {
+                experience.map((i) => (
+                    <ResumeDropdown title={i.title} place={i.place} period={i.period} text={i.text} />
+                ))
+            }
+        </Container>
+        <ContainerBottom />
+    </div>
+
+</Container>
