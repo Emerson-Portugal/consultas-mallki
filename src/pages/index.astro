@@ -38,7 +38,7 @@ import Container from "../components/elements/Container.astro";
               maxlength="10"
               autocomplete="off"
               placeholder="Ej. F001, FMK1"
-              class="w-full min-w-0 rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal tracking-normal text-base-900 placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
+              class="w-full min-w-0 rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal uppercase tracking-wider text-base-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
             />
           </div>
           <div class="flex min-w-0 flex-col gap-2">
@@ -49,9 +49,10 @@ import Container from "../components/elements/Container.astro";
               type="text"
               inputmode="numeric"
               required
-              maxlength="15"
+              minlength="8"
+              maxlength="8"
               autocomplete="off"
-              placeholder="Ej. 5, 001, 1002"
+              placeholder="Ej. 00000005"
               class="w-full min-w-0 rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal tracking-normal text-base-900 placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
             />
           </div>
@@ -142,12 +143,25 @@ import Container from "../components/elements/Container.astro";
     return { serie, correlativo, numero, codigo };
   }
 
+  const serieInput = document.getElementById("serie") as HTMLInputElement;
+  const correlativoInput = document.getElementById("correlativo") as HTMLInputElement;
+
+  serieInput?.addEventListener("input", () => {
+    const pos = serieInput.selectionStart ?? serieInput.value.length;
+    serieInput.value = serieInput.value.toUpperCase();
+    serieInput.setSelectionRange(pos, pos);
+    setFallbackVisible(false);
+  });
+
+  correlativoInput?.addEventListener("input", () => {
+    correlativoInput.value = correlativoInput.value.replace(/\D/g, "").slice(0, 8);
+    setFallbackVisible(false);
+  });
+
   function alCambiarCampos() {
     setFallbackVisible(false);
   }
-  for (const id of ["serie", "correlativo", "codigo"]) {
-    document.getElementById(id)?.addEventListener("input", alCambiarCampos);
-  }
+  document.getElementById("codigo")?.addEventListener("input", alCambiarCampos);
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();

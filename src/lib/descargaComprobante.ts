@@ -25,22 +25,19 @@ export function componerNumeroSunat(serie: string, correlativo: string): string 
 
 /** Serie SUNAT típica (alfanumérico, sin espacios raros). */
 const RE_SERIE = /^[A-Za-z0-9]{1,10}$/;
-/** Correlativo numérico (acepta ceros a la izquierda). */
-const RE_CORRELATIVO = /^[0-9]{1,15}$/;
+/** Correlativo numérico: exactamente 8 dígitos. */
+const RE_CORRELATIVO = /^[0-9]{8}$/;
 /** Código de seguridad del ticket: 3 caracteres alfanuméricos. */
 const RE_CODIGO_SEGURIDAD = /^[A-Za-z0-9]{3}$/;
-/** Formato compuesto serie-correlativo coherente con componerNumeroSunat. */
-const RE_NUMERO_SUNAT = /^[A-Za-z0-9]{1,10}-[0-9]{1,15}$/;
+/** Formato compuesto serie-correlativo: serie (1-10) + guion + 8 dígitos. */
+const RE_NUMERO_SUNAT = /^[A-Za-z0-9]{1,10}-[0-9]{8}$/;
 
 /** Valida antes de llamar al API (límites del contrato). */
 export function validarParametrosZip(numero: string, codigo: string): string | null {
   const n = numero.trim();
   const c = codigo.trim().toUpperCase();
-  if (n.length < 4 || n.length > 20) {
-    return "El número SUNAT debe tener entre 4 y 20 caracteres (serie + correlativo, ej. F001-5).";
-  }
   if (!RE_NUMERO_SUNAT.test(n)) {
-    return "Formato de número SUNAT inválido (use serie y correlativo permitidos).";
+    return "Formato de número SUNAT inválido (ej. F001-00000005).";
   }
   if (c.length !== 3) {
     return "El código de seguridad debe tener exactamente 3 caracteres.";
@@ -63,13 +60,13 @@ export function validarSerieCorrelativoCodigo(
     return "Ingrese la serie del comprobante (ej. F001 o FMK1).";
   }
   if (!corr) {
-    return "Ingrese el correlativo (ej. 5, 001 o 1002).";
+    return "Ingrese el correlativo de 8 dígitos (ej. 00000005).";
   }
   if (!RE_SERIE.test(s)) {
     return "La serie solo puede incluir letras y números (máx. 10 caracteres).";
   }
   if (!RE_CORRELATIVO.test(corr)) {
-    return "El correlativo solo puede incluir dígitos (máx. 15).";
+    return "El correlativo debe tener exactamente 8 dígitos (ej. 00000005).";
   }
   const numero = componerNumeroSunat(serie, correlativo);
   return validarParametrosZip(numero, codigo);
