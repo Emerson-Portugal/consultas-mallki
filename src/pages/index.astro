@@ -15,8 +15,9 @@ import Container from "../components/elements/Container.astro";
         Descarga tu comprobante
       </h1>
       <p class="font-sans-pro text-lg leading-relaxed text-base-700 sm:text-xl md:text-[1.25rem] md:leading-relaxed">
-        Ingresa la serie, el correlativo y el código de seguridad de 3 caracteres tal como figuran en tu ticket. Se
-        descargará un ZIP con el PDF, el XML UBL y, si ya está disponible, la constancia de recepción SUNAT (CDR).
+        Ingresa el código de seguridad de 8 caracteres tal como figura
+        en tu comprobante (es único para cada documento). Se descargará un ZIP con el PDF, el XML UBL y, si ya está
+        disponible, la constancia de recepción SUNAT (CDR).
       </p>
     </div>
 
@@ -26,39 +27,6 @@ import Container from "../components/elements/Container.astro";
       novalidate
     >
       <div class="flex flex-col gap-2 text-left">
-        <span class="text-sm font-medium tracking-normal text-base-600 sm:text-base">Número SUNAT</span>
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-          <div class="flex min-w-0 flex-col gap-2">
-            <label for="serie" class="text-12 font-medium text-base-500">Serie</label>
-            <input
-              id="serie"
-              name="serie"
-              type="text"
-              required
-              maxlength="10"
-              autocomplete="off"
-              placeholder="Ej. F001, FMK1"
-              class="w-full min-w-0 rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal uppercase tracking-wider text-base-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
-            />
-          </div>
-          <div class="flex min-w-0 flex-col gap-2">
-            <label for="correlativo" class="text-12 font-medium text-base-500">Correlativo</label>
-            <input
-              id="correlativo"
-              name="correlativo"
-              type="text"
-              inputmode="numeric"
-              required
-              minlength="8"
-              maxlength="8"
-              autocomplete="off"
-              placeholder="Ej. 00000005"
-              class="w-full min-w-0 rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal tracking-normal text-base-900 placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
-            />
-          </div>
-        </div>
-      </div>
-      <div class="flex flex-col gap-2 text-left">
         <label for="codigo" class="text-sm font-medium tracking-normal text-base-600 sm:text-base"
           >Código de seguridad</label
         >
@@ -67,11 +35,14 @@ import Container from "../components/elements/Container.astro";
           name="codigo"
           type="text"
           required
-          minlength="3"
-          maxlength="3"
+          minlength="8"
+          maxlength="8"
           autocomplete="off"
-          placeholder="Ej. A1R"
-          class="w-full rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal uppercase tracking-wider text-base-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
+          spellcheck="false"
+          inputmode="text"
+          autocapitalize="characters"
+          placeholder="Ej. ABCD1234"
+          class="w-full rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal uppercase tracking-widest text-base-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
         />
       </div>
       <p id="mensaje-error" class="hidden text-sm text-red-400 sm:text-base" role="alert"></p>
@@ -99,12 +70,7 @@ import Container from "../components/elements/Container.astro";
 </Layout>
 
 <script>
-  import {
-    buildPublicZipUrl,
-    componerNumeroSunat,
-    descargarComprobanteZip,
-    validarSerieCorrelativoCodigo,
-  } from "../lib/descargaComprobante";
+  import { buildPublicZipUrl, descargarComprobanteZip, validarCodigoSeguridadZip } from "../lib/descargaComprobante";
 
   const intro = document.getElementById("intro-descarga");
   intro?.addEventListener(
@@ -120,6 +86,7 @@ import Container from "../components/elements/Container.astro";
   const btn = document.getElementById("btn-descargar") as HTMLButtonElement;
   const btnNueva = document.getElementById("btn-nueva-pestana") as HTMLButtonElement;
   const fallbackNueva = document.getElementById("fallback-nueva-pestana") as HTMLDivElement;
+  const codigoInput = document.getElementById("codigo") as HTMLInputElement;
 
   function setFallbackVisible(show: boolean) {
     fallbackNueva.classList.toggle("hidden", !show);
@@ -135,48 +102,36 @@ import Container from "../components/elements/Container.astro";
     errEl.classList.remove("hidden");
   }
 
-  function leerCampos() {
-    const serie = (document.getElementById("serie") as HTMLInputElement).value;
-    const correlativo = (document.getElementById("correlativo") as HTMLInputElement).value;
-    const codigo = (document.getElementById("codigo") as HTMLInputElement).value;
-    const numero = componerNumeroSunat(serie, correlativo);
-    return { serie, correlativo, numero, codigo };
+  function leerCodigo(): string {
+    return codigoInput?.value ?? "";
   }
 
-  const serieInput = document.getElementById("serie") as HTMLInputElement;
-  const correlativoInput = document.getElementById("correlativo") as HTMLInputElement;
-
-  serieInput?.addEventListener("input", () => {
-    const pos = serieInput.selectionStart ?? serieInput.value.length;
-    serieInput.value = serieInput.value.toUpperCase();
-    serieInput.setSelectionRange(pos, pos);
+  codigoInput?.addEventListener("input", () => {
+    const el = codigoInput;
+    const start = el.selectionStart ?? el.value.length;
+    const before = el.value.slice(0, start);
+    const removed = (before.match(/[^A-Za-z0-9]/g) ?? []).length;
+    const cleaned = el.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 8);
+    el.value = cleaned;
+    const newPos = Math.min(Math.max(0, start - removed), cleaned.length);
+    el.setSelectionRange(newPos, newPos);
     setFallbackVisible(false);
   });
-
-  correlativoInput?.addEventListener("input", () => {
-    correlativoInput.value = correlativoInput.value.replace(/\D/g, "").slice(0, 8);
-    setFallbackVisible(false);
-  });
-
-  function alCambiarCampos() {
-    setFallbackVisible(false);
-  }
-  document.getElementById("codigo")?.addEventListener("input", alCambiarCampos);
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     setError(null);
     setFallbackVisible(false);
 
-    const { serie, correlativo, numero, codigo } = leerCampos();
-    const v = validarSerieCorrelativoCodigo(serie, correlativo, codigo);
+    const codigo = leerCodigo();
+    const v = validarCodigoSeguridadZip(codigo);
     if (v) {
       setError(v);
       return;
     }
 
     btn.disabled = true;
-    const res = await descargarComprobanteZip(numero, codigo);
+    const res = await descargarComprobanteZip(codigo);
     btn.disabled = false;
 
     if (!res.ok) {
@@ -189,14 +144,14 @@ import Container from "../components/elements/Container.astro";
   });
 
   btnNueva?.addEventListener("click", () => {
-    const { serie, correlativo, numero, codigo } = leerCampos();
-    const v = validarSerieCorrelativoCodigo(serie, correlativo, codigo);
+    const codigo = leerCodigo();
+    const v = validarCodigoSeguridadZip(codigo);
     if (v) {
       setError(v);
       return;
     }
     setError(null);
-    const url = buildPublicZipUrl(numero, codigo);
+    const url = buildPublicZipUrl(codigo);
     window.open(url, "_blank", "noopener,noreferrer");
   });
 </script>

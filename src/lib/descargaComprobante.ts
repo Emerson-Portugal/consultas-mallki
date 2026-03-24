@@ -4,82 +4,45 @@ export function getMallkiApiBase(): string {
   return (raw?.replace(/\/$/, "") || "https://mallki-facturas.cloud").trim();
 }
 
-export function buildPublicZipUrl(numero: string, codigoSeguridad: string): string {
+/**
+ * URL del ZIP público: solo `codigo_seguridad` (8 caracteres alfanuméricos, único global).
+ * GET /api/v1/documentos/publico/zip?codigo_seguridad=...
+ */
+export function buildPublicZipUrl(codigoSeguridad: string): string {
   const base = getMallkiApiBase();
   const url = new URL("/api/v1/documentos/publico/zip", `${base}/`);
-  url.searchParams.set("numero", numero.trim());
   url.searchParams.set("codigo_seguridad", codigoSeguridad.trim().toUpperCase());
   return url.toString();
 }
 
-/**
- * Une serie + correlativo al formato del API: `F001-5`, `FMK1-1002`, `F001-00000005`.
- * No rellena con ceros: el backend acepta formato corto o completo.
- */
-export function componerNumeroSunat(serie: string, correlativo: string): string {
-  const s = serie.trim().replace(/\s+/g, "");
-  const c = correlativo.trim().replace(/\s+/g, "");
-  if (!s || !c) return "";
-  return `${s}-${c}`;
-}
+/** Código impreso en el comprobante: exactamente 8 caracteres alfanuméricos. */
+const RE_CODIGO_SEGURIDAD_ZIP = /^[A-Za-z0-9]{8}$/;
 
-/** Serie SUNAT típica (alfanumérico, sin espacios raros). */
-const RE_SERIE = /^[A-Za-z0-9]{1,10}$/;
-/** Correlativo numérico: exactamente 8 dígitos. */
-const RE_CORRELATIVO = /^[0-9]{8}$/;
-/** Código de seguridad del ticket: 3 caracteres alfanuméricos. */
-const RE_CODIGO_SEGURIDAD = /^[A-Za-z0-9]{3}$/;
-/** Formato compuesto serie-correlativo: serie (1-10) + guion + 8 dígitos. */
-const RE_NUMERO_SUNAT = /^[A-Za-z0-9]{1,10}-[0-9]{8}$/;
-
-/** Valida antes de llamar al API (límites del contrato). */
-export function validarParametrosZip(numero: string, codigo: string): string | null {
-  const n = numero.trim();
+/** Valida el código antes de llamar al API. */
+export function validarCodigoSeguridadZip(codigo: string): string | null {
   const c = codigo.trim().toUpperCase();
-  if (!RE_NUMERO_SUNAT.test(n)) {
-    return "Formato de número SUNAT inválido (ej. F001-00000005).";
+  if (!c) {
+    return "Ingrese el código de seguridad de 8 caracteres que figura en su comprobante.";
   }
-  if (c.length !== 3) {
-    return "El código de seguridad debe tener exactamente 3 caracteres.";
+  if (c.length !== 8) {
+    return "El código de seguridad debe tener exactamente 8 caracteres (letras y números).";
   }
-  if (!RE_CODIGO_SEGURIDAD.test(c)) {
-    return "El código de seguridad solo puede incluir letras y números (ej. A1R).";
+  if (!RE_CODIGO_SEGURIDAD_ZIP.test(c)) {
+    return "El código solo puede incluir letras y números (ej. ABCD1234).";
   }
   return null;
-}
-
-/** Valida serie y correlativo por separado y el código; devuelve mensaje o null si OK. */
-export function validarSerieCorrelativoCodigo(
-  serie: string,
-  correlativo: string,
-  codigo: string
-): string | null {
-  const s = serie.trim();
-  const corr = correlativo.trim();
-  if (!s) {
-    return "Ingrese la serie del comprobante (ej. F001 o FMK1).";
-  }
-  if (!corr) {
-    return "Ingrese el correlativo de 8 dígitos (ej. 00000005).";
-  }
-  if (!RE_SERIE.test(s)) {
-    return "La serie solo puede incluir letras y números (máx. 10 caracteres).";
-  }
-  if (!RE_CORRELATIVO.test(corr)) {
-    return "El correlativo debe tener exactamente 8 dígitos (ej. 00000005).";
-  }
-  const numero = componerNumeroSunat(serie, correlativo);
-  return validarParametrosZip(numero, codigo);
 }
 
 function mensajePorStatus(status: number): string {
   switch (status) {
     case 400:
-      return "Formato de número inválido.";
+      return "Solicitud inválida. Revise el código de seguridad.";
+    case 422:
+      return "El código de seguridad debe tener exactamente 8 caracteres.";
     case 401:
       return "No autorizado.";
     case 403:
-      return "Código de seguridad incorrecto o comprobante anulado.";
+      return "Comprobante no encontrado o código de seguridad incorrecto.";
     case 404:
       return "Aún no hay archivos disponibles para este comprobante.";
     case 429:
@@ -89,6 +52,23 @@ function mensajePorStatus(status: number): string {
     default:
       return "No se pudo descargar el comprobante. Intente de nuevo.";
   }
+}
+
+async function mensajeErrorDesdeRespuesta(res: Response): Promise<string> {
+  const fallback = mensajePorStatus(res.status);
+  try {
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("application/json")) return fallback;
+    const j = (await res.json()) as { detail?: unknown };
+    const d = j?.detail;
+    if (typeof d === "string") {
+      const t = d.trim();
+      if (t.length > 0 && t.length <= 400) return t;
+    }
+  } catch {
+    /* usar fallback */
+  }
+  return fallback;
 }
 
 function nombreArchivoZipDesdeHeaders(
@@ -131,14 +111,12 @@ export type ResultadoDescarga =
  * Descarga el ZIP (PDF + XML + CDR) vía GET público (sin JWT).
  * Requiere CORS en el servidor para fetch desde el navegador.
  */
-export async function descargarComprobanteZip(
-  numero: string,
-  codigoSeguridad: string
-): Promise<ResultadoDescarga> {
-  const err = validarParametrosZip(numero, codigoSeguridad);
+export async function descargarComprobanteZip(codigoSeguridad: string): Promise<ResultadoDescarga> {
+  const err = validarCodigoSeguridadZip(codigoSeguridad);
   if (err) return { ok: false, mensaje: err };
 
-  const url = buildPublicZipUrl(numero, codigoSeguridad);
+  const codigo = codigoSeguridad.trim().toUpperCase();
+  const url = buildPublicZipUrl(codigo);
   let res: Response;
   try {
     res = await fetch(url, { method: "GET", credentials: "omit" });
@@ -152,15 +130,16 @@ export async function descargarComprobanteZip(
   }
 
   if (!res.ok) {
-    return { ok: false, mensaje: mensajePorStatus(res.status) };
+    const mensaje = await mensajeErrorDesdeRespuesta(res);
+    return { ok: false, mensaje };
   }
 
   try {
     const blob = await res.blob();
     const disp = res.headers.get("Content-Disposition");
-    const safeNum = numero.trim().replace(/[^\w.-]/g, "_");
-    const sugerido = nombreArchivoZipDesdeHeaders(disp, `${safeNum}.zip`);
-    const nombre = sanitizeDownloadFilename(sugerido, `${safeNum}.zip`);
+    const safeFallback = codigo.replace(/[^\w.-]/g, "_") + ".zip";
+    const sugerido = nombreArchivoZipDesdeHeaders(disp, safeFallback);
+    const nombre = sanitizeDownloadFilename(sugerido, safeFallback);
 
     const href = URL.createObjectURL(blob);
     const a = document.createElement("a");
