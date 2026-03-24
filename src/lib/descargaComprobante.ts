@@ -22,10 +22,10 @@ const RE_CODIGO_SEGURIDAD_ZIP = /^[A-Za-z0-9]{8}$/;
 export function validarCodigoSeguridadZip(codigo: string): string | null {
   const c = codigo.trim().toUpperCase();
   if (!c) {
-    return "Ingrese el código de seguridad de 8 caracteres que figura en su comprobante.";
+    return "Ingrese el código de descarga de 8 caracteres que figura en su comprobante.";
   }
   if (c.length !== 8) {
-    return "El código de seguridad debe tener exactamente 8 caracteres (letras y números).";
+    return "El código de descarga debe tener exactamente 8 caracteres (letras y números).";
   }
   if (!RE_CODIGO_SEGURIDAD_ZIP.test(c)) {
     return "El código solo puede incluir letras y números (ej. ABCD1234).";
@@ -36,13 +36,13 @@ export function validarCodigoSeguridadZip(codigo: string): string | null {
 function mensajePorStatus(status: number): string {
   switch (status) {
     case 400:
-      return "Solicitud inválida. Revise el código de seguridad.";
+      return "Solicitud inválida. Revise el código de descarga.";
     case 422:
-      return "El código de seguridad debe tener exactamente 8 caracteres.";
+      return "El código de descarga debe tener exactamente 8 caracteres.";
     case 401:
       return "No autorizado.";
     case 403:
-      return "Comprobante no encontrado o código de seguridad incorrecto.";
+      return "Comprobante no encontrado o código de descarga incorrecto.";
     case 404:
       return "Aún no hay archivos disponibles para este comprobante.";
     case 429:
