@@ -9,13 +9,13 @@ import Text from "../components/elements/Text.astro";
 import Link from "../components/elements/Link.astro";
 ---
 
-<Layout title = "Page Not Found">
+<Layout title="Página no encontrada">
     <Container variant={'xl'} class="text-center flex items-center">
         <div class="flex flex-col gap-4">
-            <Heading tagName="h1" tagSize="h1">Page Not Found</Heading>
-            <Text variant={'xl'} class="text-base-900">Oops! It seems the page you are trying to access is broken or does not exist!</Text>    
+            <Heading tagName="h1" tagSize="h2">Página no encontrada</Heading>
+            <Text variant={'xl'} class="text-base-900">La página que buscas no existe o cambió de dirección. Si quieres descargar tu comprobante, hazlo desde el inicio con tu código de descarga.</Text>
         </div>
-        
-        <Link variant={'button'} href="/">Go back to the homepage</Link>
+
+        <Link variant={'button'} href="/">Ir a la página de descarga</Link>
     </Container>
 </Layout>

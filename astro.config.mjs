@@ -5,9 +5,13 @@ import tailwindcss from '@tailwindcss/vite';
 
 import sitemap from '@astrojs/sitemap';
 
-// En Render (y CI): define PUBLIC_SITE_URL = https://tu-servicio.onrender.com (sin barra final)
+// PUBLIC_SITE_URL (Render → Environment) permite sobreescribir el dominio.
+// El fallback es el dominio público REAL: si la variable falta, el sitemap y los
+// canonicals NUNCA deben publicar localhost (bug §146.6 — sitemap indexable con
+// URLs http://localhost:4321).
 const site =
-  process.env.PUBLIC_SITE_URL?.replace(/\/$/, "") || "http://localhost:4321";
+  process.env.PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+  "https://consultas.mallki-facturas.cloud";
 
 // https://astro.build/config
 export default defineConfig({

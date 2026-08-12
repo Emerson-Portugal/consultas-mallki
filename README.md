@@ -1,118 +1,43 @@
-# Grunge 
-Grunge is a portfolio Astro theme with a grunge aesthetic, perfect for developers, designers and any other creative who wants to stand out and show their love for the 90s music scene. 
+# MALLKI-FACTURAS — Consulta pública de comprobantes
 
-## Tech stack
-- Astro
-- Tailwind v4
-- JavaScript
-- TypeScript
+Sitio estático (Astro) donde el cliente final descarga su comprobante electrónico
+con el **código de descarga de 8 caracteres** que figura impreso en su ticket.
+Descarga un ZIP con el PDF, el XML UBL firmado y (si ya está disponible) la
+constancia de recepción de SUNAT (CDR).
 
-## Pages
-- Home
-- Works
-- Individual Work
-- About
-- Contact
-- 404
+- **Dominio:** https://consultas.mallki-facturas.cloud (deploy en Render, `render.yaml`)
+- **API que consume:** `GET /api/v1/documentos/publico/zip` del backend Mallki
+  (ver `src/lib/descargaComprobante.ts`). No requiere sesión.
 
-## Features
-- Content collections
-- Reusable components
-- Tailwind theme
-- Pagination
-- Sitemap
-- Ongoing updates
+## Comandos
 
-If you have any questions, feel free to reach out:
-- [Bluesky](https://bsky.app/profile/gasparjs.bsky.social)
-- [jessgaspardev@gmail.com](mailto:jessgaspardev@gmail.com)
-
-
-## 🚀 Project Structure
-
-Inside of your template, you'll see the following folders and files:
-
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── images
-│   │   └── ui
-│   │   └── work-card
-│   ├── components
-│   │   ├── elements     # elements that can be used across the website
-│   │   │   └── Container.astro
-│   │   │   └── ContainerBottom.astro
-│   │   │   └── Heading.astro
-│   │   │   └── ImageContainer.astro
-│   │   │   └── Link.astro
-│   │   │   └── Text.astro
-│   │   │   └── Dropdown.astro
-│   │   │   └── ResumeDropdown.astro
-│   │   │   └── Work.astro
-│   │   ├── global       # elements used on every page
-│   │   │   └── BaseHead.astro
-│   │   │   └── Footer.astro
-│   │   │   └── Navigation.astro
-│   │   │   └── Wrapper.astro
-│   │   ├── sections    # components used on each section of each page
-│   │   │   └── about
-│   │   │   │   └── Education.astro 
-│   │   │   │   └── Experience.astro 
-│   │   │   │   └── Intro.astro 
-│   │   │   ├── contact
-│   │   │   │   └── ContactDetails.astro 
-│   │   │   │   └── ContactItem.astro 
-│   │   │   │   └── Intro.astro 
-│   │   │   ├── home
-│   │   │   │   └── About.astro 
-│   │   │   │   └── Faq.astro 
-│   │   │   │   └── Hero.astro 
-│   │   │   │   └── SelectedWorks.astro 
-│   │   │   │   └── Services.astro 
-│   │   │   ├── works
-│   │   │   │   └── Pagination.astro 
-│   │   │   │   └── Works.astro
-│   ├── components
-│   │   ├── images
-│   │   │   └── (folders for each post - add your project images here)
-│   │   └── project-title.md
-│   │   └── (add your projects here)
-│   ├── layouts
-│   │   └── Layout.astro
-│   ├── pages
-│   │   └── works
-│   │   │   └── [...page].astro
-│   │   │   └── [page].astro
-│   │   └── index.astro
-│   │   └── 404.astro
-│   │   └── about.astro
-│   │   └── contact.astro
-│   ├── styles
-│   │   └── global.css  # global styling and tailwind theme configuration
-│   │   └── markdown.css  # markdown files styling
-│   └── content.config.ts
-└── .gitignore
-└── astro.config.ts
-└── LICENSE
-└── package-lock.json
-└── README.md
-└── tsconfig.json
+```sh
+npm ci            # instalar dependencias
+npm run dev       # servidor local (http://localhost:4321)
+npm run build     # build estático a dist/
+npm run preview   # previsualizar el build
 ```
 
+## Configuración
 
-## 🧞 Commands
+- `PUBLIC_SITE_URL` — dominio público para el sitemap y los canonicals.
+  Ya viene fijado en `render.yaml`; el `astro.config.mjs` usa el mismo valor
+  como fallback (nunca publica localhost).
 
-All commands are run from the root of the project, from a terminal:
+## Estructura
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+```text
+src/
+├── pages/index.astro          formulario de descarga (la única página)
+├── pages/404.astro            página de error en español
+├── lib/descargaComprobante.ts validación del código + descarga del ZIP
+├── layouts/Layout.astro       shell (head + header + footer)
+└── components/                Container, Heading, Text, Link + globales
+```
 
+## Créditos
+
+La base visual proviene del theme **Grunge** de Jess Gaspar (licencia MIT —
+ver `LICENSE`, cuyo aviso de copyright se conserva conforme a la licencia).
+El contenido del theme (portfolio de ejemplo) fue retirado; solo se reutilizan
+el layout y los componentes de UI.

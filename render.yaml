@@ -1,5 +1,8 @@
 # Blueprint Render: Static Site
-# Tras el primer deploy, en Environment añade PUBLIC_SITE_URL con la URL pública (ej. https://xxx.onrender.com)
+# PUBLIC_SITE_URL define el dominio para sitemap/canonicals. Queda fijado al
+# dominio público real; si el servicio cambia de dominio, actualizarlo aquí o
+# sobreescribirlo en Render → Environment. (El astro.config además tiene este
+# mismo valor como fallback: nunca se publica localhost.)
 services:
   - type: web
     name: factutas-consulta
@@ -8,4 +11,4 @@ services:
     staticPublishPath: dist
     envVars:
       - key: PUBLIC_SITE_URL
-        sync: false
+        value: https://consultas.mallki-facturas.cloud
