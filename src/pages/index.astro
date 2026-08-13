@@ -4,74 +4,413 @@ import Container from "../components/elements/Container.astro";
 ---
 
 <Layout title="Consulta de comprobante">
-  <Container variant="xl" class="flex flex-col items-center gap-10 pb-24 pt-4 sm:pt-6">
-    <div
-      id="intro-descarga"
-      class="flex max-w-2xl cursor-default flex-col gap-5 px-2 text-center sm:max-w-3xl sm:px-0"
-      role="region"
-      aria-label="Instrucciones de descarga"
-    >
-      <h1 class="font-sans-pro text-4xl font-semibold leading-tight tracking-tight text-base-900 sm:text-5xl md:text-[3rem] md:leading-[1.15]">
-        Descarga tu comprobante
-      </h1>
-      <p class="font-sans-pro text-lg leading-relaxed text-base-700 sm:text-xl md:text-[1.25rem] md:leading-relaxed">
-        Ingresa el código de descarga de 8 caracteres tal como figura
-        en tu comprobante (es único para cada documento). Se descargará un ZIP con el PDF, el XML UBL y, si ya está
-        disponible, la constancia de recepción SUNAT (CDR).
-      </p>
-    </div>
+  {/*
+    Decide la vista ANTES de pintar, para que no se vea el formulario un instante
+    cuando el cliente llega escaneando el QR (`/?c=CODIGO`). Va inline en el head:
+    un script del bundler correría después del primer render y el parpadeo se vería.
+  */}
+  <script is:inline>
+    (function () {
+      try {
+        var c = new URLSearchParams(window.location.search).get("c")
+             || new URLSearchParams(window.location.search).get("codigo") || "";
+        var esComprobante = /^[A-Za-z0-9]{8}$/.test(c.trim());
+        document.documentElement.setAttribute("data-vista", esComprobante ? "comprobante" : "formulario");
+      } catch (e) {
+        document.documentElement.setAttribute("data-vista", "formulario");
+      }
+    })();
+  </script>
 
-    <form
-      id="form-consulta"
-      class="font-sans-pro flex w-full max-w-md flex-col gap-6"
-      novalidate
-    >
-      <div class="flex flex-col gap-2 text-left">
-        <label for="codigo" class="text-sm font-medium tracking-normal text-base-600 sm:text-base"
-          >Código de descarga</label
+  <style is:inline>
+    /* Sin JS o antes de que corra: se ve el formulario (comportamiento de siempre). */
+    #vista-comprobante { display: none; }
+    html[data-vista="comprobante"] #vista-comprobante { display: flex; }
+    html[data-vista="comprobante"] #vista-formulario { display: none; }
+  </style>
+
+  <Container variant="xl" class="flex flex-col items-center gap-10 pb-24 pt-4 sm:pt-6">
+    <!-- ════════════════════════════════════════════════════════════
+         VISTA COMPROBANTE — destino del QR impreso (/?c=CODIGO)
+         ════════════════════════════════════════════════════════════ -->
+    <section id="vista-comprobante" class="w-full max-w-3xl flex-col gap-6" aria-live="polite">
+      <!-- Cargando -->
+      <div id="cmp-cargando" class="flex flex-col items-center gap-4 py-16 text-center">
+        <div
+          class="h-10 w-10 animate-spin rounded-full border-2 border-base-500 border-t-base-900"
+          role="status"
+          aria-label="Cargando comprobante"
         >
-        <input
-          id="codigo"
-          name="codigo"
-          type="text"
-          required
-          minlength="8"
-          maxlength="8"
-          autocomplete="off"
-          spellcheck="false"
-          inputmode="text"
-          autocapitalize="characters"
-          placeholder="Ej. ABCD1234"
-          class="w-full rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal uppercase tracking-widest text-base-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
-        />
+        </div>
+        <p class="font-sans-pro text-base text-base-700">Buscando su comprobante…</p>
       </div>
-      <p id="mensaje-error" class="hidden text-sm text-red-400 sm:text-base" role="alert"></p>
-      <button
-        type="submit"
-        id="btn-descargar"
-        class="rounded bg-base-900 px-6 py-3.5 text-base font-semibold tracking-normal text-base-100 hover:bg-base-800 focus:outline-none focus:ring-2 focus:ring-base-700 disabled:cursor-not-allowed disabled:opacity-60 sm:text-lg"
+
+      <!-- Error -->
+      <div id="cmp-error" class="hidden flex-col items-center gap-5 py-14 text-center">
+        <h1 class="font-sans-pro text-2xl font-semibold text-base-900 sm:text-3xl">
+          No pudimos mostrar el comprobante
+        </h1>
+        <p id="cmp-error-msg" class="font-sans-pro max-w-md text-base leading-relaxed text-base-700"></p>
+        <a
+          href="/"
+          class="rounded bg-base-900 px-6 py-3 font-sans-pro text-base font-semibold text-base-100 hover:bg-base-800"
+        >
+          Buscar con el código
+        </a>
+      </div>
+
+      <!-- Comprobante -->
+      <div id="cmp-contenido" class="hidden flex-col gap-6">
+        <!-- Encabezado: qué documento es y quién lo emitió -->
+        <header class="flex flex-col items-center gap-3 px-2 text-center">
+          <h1
+            id="cmp-tipo"
+            class="font-sans-pro text-2xl font-semibold leading-tight tracking-tight text-base-900 sm:text-3xl"
+          >
+          </h1>
+          <p class="font-sans-pro text-sm uppercase tracking-wider text-base-600">emitida por</p>
+          <p id="cmp-emisor" class="font-sans-pro text-xl font-semibold leading-snug text-base-900 sm:text-2xl"></p>
+          <p id="cmp-emisor-ruc" class="font-mono text-sm text-base-600"></p>
+          <span
+            id="cmp-estado"
+            class="mt-1 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 font-sans-pro text-sm font-medium"
+          >
+          </span>
+        </header>
+
+        <!-- Visor del PDF -->
+        <div class="flex flex-col gap-3">
+          <div class="overflow-hidden rounded border border-base-400 bg-base-200">
+            <iframe
+              id="cmp-pdf"
+              class="hidden h-[70vh] max-h-[820px] w-full min-h-[420px] border-0 bg-white"
+              title="Representación impresa del comprobante"
+            ></iframe>
+            <div id="cmp-pdf-noview" class="hidden flex-col items-center gap-4 px-6 py-14 text-center">
+              <p class="font-sans-pro text-base leading-relaxed text-base-700">
+                Su navegador no puede mostrar el PDF aquí dentro. Ábralo en una pestaña nueva
+                o descárguelo con los botones de abajo.
+              </p>
+              <button
+                type="button"
+                id="btn-abrir-pdf"
+                class="rounded bg-base-900 px-6 py-3 font-sans-pro text-base font-semibold text-base-100 hover:bg-base-800"
+              >
+                Abrir el PDF
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Datos del comprobante -->
+        <div class="rounded border border-base-400 bg-base-200/60 p-5 sm:p-6">
+          <h2 class="font-sans-pro mb-4 text-lg font-semibold text-base-900 sm:text-xl">
+            Datos del comprobante
+          </h2>
+          <dl id="cmp-datos" class="font-sans-pro flex flex-col gap-3 text-base"></dl>
+        </div>
+
+        <!-- Descargas -->
+        <div class="flex flex-col gap-3">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <button
+              type="button"
+              data-descarga="pdf"
+              class="hidden rounded bg-base-900 px-5 py-3.5 font-sans-pro text-base font-semibold text-base-100 hover:bg-base-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Descargar PDF
+            </button>
+            <button
+              type="button"
+              data-descarga="xml"
+              class="hidden rounded border border-base-500 px-5 py-3.5 font-sans-pro text-base font-semibold text-base-900 hover:bg-base-300 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Descargar XML
+            </button>
+            <button
+              type="button"
+              data-descarga="cdr"
+              class="hidden rounded border border-base-500 px-5 py-3.5 font-sans-pro text-base font-semibold text-base-900 hover:bg-base-300 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Descargar CDR
+            </button>
+          </div>
+          <p id="cmp-descarga-msg" class="hidden font-sans-pro text-sm text-red-400" role="alert"></p>
+          <p class="font-sans-pro text-sm leading-relaxed text-base-600">
+            El XML es el documento electrónico firmado; el CDR es la constancia de recepción de SUNAT
+            (aparece cuando SUNAT ya respondió).
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════
+         VISTA FORMULARIO — sin código en la URL
+         ════════════════════════════════════════════════════════════ -->
+    <div id="vista-formulario" class="flex w-full flex-col items-center gap-10">
+      <div
+        id="intro-descarga"
+        class="flex max-w-2xl cursor-default flex-col gap-5 px-2 text-center sm:max-w-3xl sm:px-0"
+        role="region"
+        aria-label="Instrucciones de descarga"
       >
-        Descargar ZIP
-      </button>
-      <div id="fallback-nueva-pestana" class="hidden flex flex-col items-center gap-3" aria-live="polite">
-        <p class="text-sm text-base-500 text-center max-w-md leading-relaxed sm:text-base">
-          Puede intentar abrir el mismo enlace en una nueva pestaña; a veces el navegador permite la descarga así.
+        <h1 class="font-sans-pro text-4xl font-semibold leading-tight tracking-tight text-base-900 sm:text-5xl md:text-[3rem] md:leading-[1.15]">
+          Consulta tu comprobante
+        </h1>
+        <p class="font-sans-pro text-lg leading-relaxed text-base-700 sm:text-xl md:text-[1.25rem] md:leading-relaxed">
+          Escanea el código QR de tu comprobante o ingresa aquí el código de descarga de 8 caracteres
+          que figura impreso en él. Podrás ver el documento y descargar el PDF, el XML y la constancia
+          de SUNAT (CDR).
         </p>
+      </div>
+
+      <form id="form-consulta" class="font-sans-pro flex w-full max-w-md flex-col gap-6" novalidate>
+        <div class="flex flex-col gap-2 text-left">
+          <label for="codigo" class="text-sm font-medium tracking-normal text-base-600 sm:text-base"
+            >Código de descarga</label
+          >
+          <input
+            id="codigo"
+            name="codigo"
+            type="text"
+            required
+            minlength="8"
+            maxlength="8"
+            autocomplete="off"
+            spellcheck="false"
+            inputmode="text"
+            autocapitalize="characters"
+            placeholder="Ej. ABCD1234"
+            class="w-full rounded border border-base-500 bg-base-200/80 px-4 py-3.5 text-base font-normal uppercase tracking-widest text-base-900 placeholder:normal-case placeholder:tracking-normal placeholder:text-base-500 focus:border-base-700 focus:outline-none focus:ring-1 focus:ring-base-700 sm:text-lg"
+          />
+        </div>
+        <p id="mensaje-error" class="hidden text-sm text-red-400 sm:text-base" role="alert"></p>
+        <button
+          type="submit"
+          id="btn-ver"
+          class="rounded bg-base-900 px-6 py-3.5 text-base font-semibold tracking-normal text-base-100 hover:bg-base-800 focus:outline-none focus:ring-2 focus:ring-base-700 disabled:cursor-not-allowed disabled:opacity-60 sm:text-lg"
+        >
+          Ver comprobante
+        </button>
         <button
           type="button"
-          id="btn-nueva-pestana"
+          id="btn-descargar-zip"
           class="text-sm font-medium tracking-normal text-base-600 underline underline-offset-4 hover:text-base-800 sm:text-base"
         >
-          Abrir descarga en nueva pestaña
+          Prefiero descargar todo en un ZIP
         </button>
-      </div>
-    </form>
+        <div id="fallback-nueva-pestana" class="hidden flex-col items-center gap-3" aria-live="polite">
+          <p class="text-sm leading-relaxed text-base-500 sm:text-base">
+            Puede intentar abrir el mismo enlace en una nueva pestaña; a veces el navegador permite la descarga así.
+          </p>
+          <button
+            type="button"
+            id="btn-nueva-pestana"
+            class="text-sm font-medium tracking-normal text-base-600 underline underline-offset-4 hover:text-base-800 sm:text-base"
+          >
+            Abrir descarga en nueva pestaña
+          </button>
+        </div>
+      </form>
+    </div>
   </Container>
 </Layout>
 
 <script>
-  import { buildPublicZipUrl, descargarComprobanteZip, validarCodigoSeguridadZip } from "../lib/descargaComprobante";
+  import {
+    buildPublicZipUrl,
+    descargarComprobanteZip,
+    validarCodigoSeguridadZip,
+  } from "../lib/descargaComprobante";
+  import {
+    cargarPdfComoBlobUrl,
+    consultarComprobante,
+    descargarArchivo,
+    formatearFecha,
+    formatearMonto,
+    leerCodigoDeUrl,
+    type ComprobantePublico,
+    type TipoArchivo,
+  } from "../lib/consultaComprobante";
 
+  // ── Vista comprobante (llega del QR) ──────────────────────────────────────
+  const secComprobante = document.getElementById("vista-comprobante");
+  const elCargando = document.getElementById("cmp-cargando");
+  const elError = document.getElementById("cmp-error");
+  const elErrorMsg = document.getElementById("cmp-error-msg") as HTMLParagraphElement | null;
+  const elContenido = document.getElementById("cmp-contenido");
+  const elPdf = document.getElementById("cmp-pdf") as HTMLIFrameElement | null;
+  const elPdfNoView = document.getElementById("cmp-pdf-noview");
+  const elDatos = document.getElementById("cmp-datos");
+  const elDescargaMsg = document.getElementById("cmp-descarga-msg") as HTMLParagraphElement | null;
+
+  function mostrar(el: Element | null, visible: boolean, display = "flex") {
+    if (!el) return;
+    (el as HTMLElement).classList.toggle("hidden", !visible);
+    if (visible) (el as HTMLElement).style.display = display;
+  }
+
+  function filaDato(etiqueta: string, valor: string): HTMLDivElement {
+    const fila = document.createElement("div");
+    fila.className = "flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3";
+    const dt = document.createElement("dt");
+    dt.className = "shrink-0 text-base-600 sm:w-44";
+    dt.textContent = etiqueta;
+    const dd = document.createElement("dd");
+    dd.className = "font-medium text-base-900 break-words";
+    dd.textContent = valor;
+    fila.append(dt, dd);
+    return fila;
+  }
+
+  function pintarEstado(datos: ComprobantePublico) {
+    const el = document.getElementById("cmp-estado");
+    if (!el) return;
+    el.textContent = datos.estado_texto;
+    const sunat = (datos.sunat_estado ?? "").toUpperCase();
+    // Verde = SUNAT ya lo aceptó · Rojo = anulado o rechazado · Ámbar = válido, en camino.
+    const clases =
+      datos.anulado || sunat.startsWith("RECHAZAD")
+        ? "border-red-500/40 bg-red-500/10 text-red-300"
+        : sunat === "ACEPTADO"
+          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+          : "border-amber-500/40 bg-amber-500/10 text-amber-300";
+    el.className =
+      "mt-1 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 font-sans-pro text-sm font-medium " +
+      clases;
+  }
+
+  function pintarComprobante(datos: ComprobantePublico) {
+    const tipo = document.getElementById("cmp-tipo");
+    if (tipo) tipo.textContent = datos.tipo_nombre;
+
+    const emisor = document.getElementById("cmp-emisor");
+    if (emisor) emisor.textContent = datos.emisor.razon_social ?? datos.emisor.nombre_comercial ?? "—";
+
+    const ruc = document.getElementById("cmp-emisor-ruc");
+    if (ruc) ruc.textContent = datos.emisor.ruc ? `RUC ${datos.emisor.ruc}` : "";
+
+    pintarEstado(datos);
+
+    if (elDatos) {
+      elDatos.replaceChildren();
+      elDatos.append(filaDato("Número", datos.numero ?? "—"));
+      elDatos.append(filaDato("Fecha de emisión", formatearFecha(datos.fecha_emision)));
+      elDatos.append(filaDato("Cliente", datos.cliente.nombre));
+      if (datos.cliente.documento) {
+        elDatos.append(filaDato("Documento del cliente", datos.cliente.documento));
+      }
+      elDatos.append(filaDato("Importe total", formatearMonto(datos.total, datos.moneda)));
+      elDatos.append(filaDato("Código de descarga", datos.codigo_seguridad));
+    }
+
+    // Un botón por archivo realmente disponible.
+    (["pdf", "xml", "cdr"] as TipoArchivo[]).forEach((tipoArchivo) => {
+      const btn = document.querySelector<HTMLButtonElement>(`[data-descarga="${tipoArchivo}"]`);
+      if (btn) btn.classList.toggle("hidden", !datos.archivos[tipoArchivo]);
+    });
+
+    mostrar(elCargando, false);
+    mostrar(elContenido, true, "flex");
+  }
+
+  function mostrarError(mensaje: string) {
+    mostrar(elCargando, false);
+    mostrar(elContenido, false);
+    if (elErrorMsg) elErrorMsg.textContent = mensaje;
+    mostrar(elError, true, "flex");
+  }
+
+  async function montarVistaComprobante(codigo: string) {
+    const res = await consultarComprobante(codigo);
+    if (!res.ok) {
+      mostrarError(res.mensaje);
+      return;
+    }
+    const datos = res.datos;
+    pintarComprobante(datos);
+
+    if (datos.anulado) {
+      mostrar(elPdfNoView, true, "flex");
+      const btnAbrir = document.getElementById("btn-abrir-pdf");
+      if (btnAbrir) btnAbrir.classList.add("hidden");
+      const aviso = elPdfNoView?.querySelector("p");
+      if (aviso) aviso.textContent = "Este comprobante fue anulado, por eso no se muestra el documento.";
+      return;
+    }
+
+    if (!datos.archivos.pdf) {
+      mostrar(elPdfNoView, true, "flex");
+      const btnAbrir = document.getElementById("btn-abrir-pdf");
+      if (btnAbrir) btnAbrir.classList.add("hidden");
+      const aviso = elPdfNoView?.querySelector("p");
+      if (aviso) {
+        aviso.textContent =
+          "El PDF de este comprobante todavía se está generando. Vuelva a intentar en unos minutos.";
+      }
+      return;
+    }
+
+    const blobUrl = await cargarPdfComoBlobUrl(codigo);
+    if (!blobUrl || !elPdf) {
+      mostrar(elPdfNoView, true, "flex");
+      return;
+    }
+    elPdf.src = blobUrl;
+    elPdf.classList.remove("hidden");
+
+    // Algunos navegadores móviles no renderizan PDF dentro de un iframe y lo dejan
+    // en blanco sin avisar. Se ofrece siempre la salida de abrirlo aparte.
+    const btnAbrir = document.getElementById("btn-abrir-pdf");
+    btnAbrir?.addEventListener("click", () => {
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+    });
+    window.setTimeout(() => {
+      let vacio = false;
+      try {
+        const doc = elPdf.contentDocument;
+        // ⚠️ NO alcanza con mirar `body.childElementCount`: cuando Chrome/Edge SÍ
+        // están mostrando el PDF, su visor vive fuera del DOM accesible y el body
+        // queda con 0 hijos igual. Medido: contentType "application/pdf" + body
+        // vacío = el PDF se está viendo perfectamente. Usar el conteo de hijos
+        // como única señal escondía el visor en TODOS los navegadores.
+        // El indicador real es el contentType: si el documento del iframe es un
+        // PDF, el navegador lo está renderizando.
+        const tipo = doc ? doc.contentType || "" : "";
+        vacio = !!doc && tipo !== "application/pdf" && doc.body != null && doc.body.childElementCount === 0;
+      } catch {
+        vacio = false; // cross-origin: el navegador lo está renderizando
+      }
+      if (vacio) {
+        elPdf.classList.add("hidden");
+        mostrar(elPdfNoView, true, "flex");
+      }
+    }, 2500);
+  }
+
+  document.querySelectorAll<HTMLButtonElement>("[data-descarga]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const codigo = leerCodigoDeUrl();
+      const tipo = btn.dataset.descarga as TipoArchivo | undefined;
+      if (!codigo || !tipo) return;
+      btn.disabled = true;
+      const res = await descargarArchivo(codigo, tipo);
+      btn.disabled = false;
+      if (!res.ok && elDescargaMsg) {
+        elDescargaMsg.textContent = res.mensaje;
+        elDescargaMsg.classList.remove("hidden");
+      } else if (elDescargaMsg) {
+        elDescargaMsg.classList.add("hidden");
+      }
+    });
+  });
+
+  const codigoDeUrl = leerCodigoDeUrl();
+  if (codigoDeUrl && secComprobante) {
+    void montarVistaComprobante(codigoDeUrl);
+  }
+
+  // ── Vista formulario (sin código en la URL) ───────────────────────────────
   const intro = document.getElementById("intro-descarga");
   intro?.addEventListener(
     "pointerdown",
@@ -81,18 +420,20 @@ import Container from "../components/elements/Container.astro";
     { passive: true }
   );
 
-  const form = document.getElementById("form-consulta") as HTMLFormElement;
-  const errEl = document.getElementById("mensaje-error") as HTMLParagraphElement;
-  const btn = document.getElementById("btn-descargar") as HTMLButtonElement;
-  const btnNueva = document.getElementById("btn-nueva-pestana") as HTMLButtonElement;
-  const fallbackNueva = document.getElementById("fallback-nueva-pestana") as HTMLDivElement;
-  const codigoInput = document.getElementById("codigo") as HTMLInputElement;
+  const form = document.getElementById("form-consulta") as HTMLFormElement | null;
+  const errEl = document.getElementById("mensaje-error") as HTMLParagraphElement | null;
+  const btnVer = document.getElementById("btn-ver") as HTMLButtonElement | null;
+  const btnZip = document.getElementById("btn-descargar-zip") as HTMLButtonElement | null;
+  const btnNueva = document.getElementById("btn-nueva-pestana") as HTMLButtonElement | null;
+  const fallbackNueva = document.getElementById("fallback-nueva-pestana") as HTMLDivElement | null;
+  const codigoInput = document.getElementById("codigo") as HTMLInputElement | null;
 
   function setFallbackVisible(show: boolean) {
-    fallbackNueva.classList.toggle("hidden", !show);
+    fallbackNueva?.classList.toggle("hidden", !show);
   }
 
   function setError(msg: string | null) {
+    if (!errEl) return;
     if (!msg) {
       errEl.textContent = "";
       errEl.classList.add("hidden");
@@ -118,29 +459,53 @@ import Container from "../components/elements/Container.astro";
     setFallbackVisible(false);
   });
 
-  form?.addEventListener("submit", async (e) => {
+  // Ver el comprobante = misma pantalla a la que lleva el QR.
+  form?.addEventListener("submit", (e) => {
     e.preventDefault();
     setError(null);
-    setFallbackVisible(false);
+    const codigo = leerCodigo().trim().toUpperCase();
+    const v = validarCodigoSeguridadZip(codigo);
+    if (v) {
+      setError(v);
+      return;
+    }
+    window.location.search = `?c=${encodeURIComponent(codigo)}`;
+  });
 
+  // La URL trae un `?c=` que no tiene forma de código válido: pasa cuando el
+  // lector agarra el QR a medias (papel térmico arrugado, poca luz) o cuando
+  // alguien edita la dirección. Mostrar el formulario vacío haría parecer que no
+  // pasó nada; se precarga lo que sí se pudo leer y se explica qué revisar.
+  if (!codigoDeUrl) {
+    const params = new URLSearchParams(window.location.search);
+    const crudo = (params.get("c") ?? params.get("codigo") ?? "").trim();
+    if (crudo) {
+      const limpio = crudo.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 8);
+      if (codigoInput) codigoInput.value = limpio;
+      setError(
+        "El código del enlace está incompleto. Compáralo con el que figura impreso en tu comprobante y vuelve a intentar."
+      );
+    }
+  }
+
+  btnZip?.addEventListener("click", async () => {
+    setError(null);
+    setFallbackVisible(false);
     const codigo = leerCodigo();
     const v = validarCodigoSeguridadZip(codigo);
     if (v) {
       setError(v);
       return;
     }
-
-    btn.disabled = true;
+    if (btnVer) btnVer.disabled = true;
+    btnZip.disabled = true;
     const res = await descargarComprobanteZip(codigo);
-    btn.disabled = false;
-
+    if (btnVer) btnVer.disabled = false;
+    btnZip.disabled = false;
     if (!res.ok) {
       setError(res.mensaje);
       setFallbackVisible(!!res.mostrarAlternativaNuevaPestana);
-      return;
     }
-    setError(null);
-    setFallbackVisible(false);
   });
 
   btnNueva?.addEventListener("click", () => {
@@ -151,7 +516,6 @@ import Container from "../components/elements/Container.astro";
       return;
     }
     setError(null);
-    const url = buildPublicZipUrl(codigo);
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(buildPublicZipUrl(codigo), "_blank", "noopener,noreferrer");
   });
 </script>
