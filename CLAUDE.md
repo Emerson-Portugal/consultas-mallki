@@ -38,10 +38,10 @@ principal de este repo.
 
 ## 2. STACK
 
-- **Astro 6.0.2** (ojo: el otro sitio, `facturas-web`, usa Astro 5) + **Tailwind 4** vía `@tailwindcss/vite`.
+- **Astro 7.4** + **Tailwind 4** vía `@tailwindcss/vite`. **`compressHTML: true` no se quita:** el valor por defecto de Astro 7 borra el salto de línea antes de una etiqueta y pega las palabras.
 - `@astrojs/sitemap` (genera `sitemap-index.xml` y `sitemap-0.xml`).
 - Fuentes autohospedadas: `@fontsource-variable/inter`, `@fontsource-variable/jetbrains-mono`, `@fontsource/road-rage`.
-- `engines.node >= 22.12.0`.
+- `engines.node >= 22.23.4`, y la misma versión en `.nvmrc`: lo pide Astro 7 y Render lo lee de ahí.
 - Sin framework de UI, sin islas; la lógica del formulario es un `<script>` de módulo en `index.astro`.
 
 ---

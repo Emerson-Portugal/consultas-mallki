@@ -15,6 +15,9 @@ const site =
 
 // https://astro.build/config
 export default defineConfig({
+  // Desde Astro 7 el valor por defecto es 'jsx': borra el salto de línea antes de una etiqueta y
+  // pega las palabras de un párrafo que sigue con un enlace. `true` no pierde espacios.
+  compressHTML: true,
   vite: {
     plugins: [tailwindcss()],
   },
