@@ -1,0 +1,43 @@
+name: Deploy Consulta
+
+# La consulta se sirve desde la VPS (nginx, ~/mallki-facturas/sitios/consultas), ya no desde Render.
+# La llave de este deploy sólo escribe en esa carpeta (rrsync -wo en authorized_keys): no abre
+# una terminal ni puede tocar otra cosa. Este repo es público: corre sólo con push a main, y un
+# pull request de afuera no recibe los secretos.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build y copia a la VPS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Copiar a la VPS
+        env:
+          SITIO_SSH_KEY: ${{ secrets.SITIO_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          test -f dist/index.html
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SITIO_SSH_KEY" > ~/.ssh/sitio
+          chmod 600 ~/.ssh/sitio
+          rsync -a --no-g --no-o --delete \
+            -e "ssh -i $HOME/.ssh/sitio -p $VPS_PORT -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
+            dist/ "deploy@$VPS_HOST:./"
