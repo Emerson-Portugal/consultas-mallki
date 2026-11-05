@@ -23,7 +23,7 @@ Es el sitio que el raíz llama `consultas.mallki-facturas.cloud` (§24: ese orig
 debe estar en `ALLOWED_ORIGINS` del backend o el `fetch` muere por CORS).
 
 - **Remote:** `https://github.com/Emerson-Portugal/consultas-mallki.git`
-- **Deploy:** Render, static site (`render.yaml`).
+- **Deploy:** cada push a `main` publica en `sitios/consultas` de la VPS (`.github/workflows/deploy.yml`), con una llave que sólo escribe ahí. `render.yaml` se queda hasta pausar Render (12-11): es el camino de vuelta.
 
 ### El repo es un theme comercial adaptado
 
@@ -41,7 +41,7 @@ principal de este repo.
 - **Astro 7.4** + **Tailwind 4** vía `@tailwindcss/vite`. **`compressHTML: true` no se quita:** el valor por defecto de Astro 7 borra el salto de línea antes de una etiqueta y pega las palabras.
 - `@astrojs/sitemap` (genera `sitemap-index.xml` y `sitemap-0.xml`).
 - Fuentes autohospedadas: `@fontsource-variable/inter`, `@fontsource-variable/jetbrains-mono`, `@fontsource/road-rage`.
-- `engines.node >= 22.23.4`, y la misma versión en `.nvmrc`: lo pide Astro 7 y Render lo lee de ahí.
+- `engines.node >= 22.23.4`, y la misma versión en `.nvmrc`: lo pide Astro 7 y el deploy lo lee de ahí.
 - Sin framework de UI, sin islas; la lógica del formulario es un `<script>` de módulo en `index.astro`.
 
 ---
@@ -85,11 +85,10 @@ npm run preview
 
 | Var | Dónde se usa | Estado |
 |---|---|---|
-| `PUBLIC_SITE_URL` | `astro.config.mjs` → `site` (canonical + sitemap) | Fijada en `render.yaml` con `value: https://consultas.mallki-facturas.cloud`; el `astro.config.mjs` usa ese MISMO dominio como fallback → aunque la variable falte, **nunca** se publica localhost (fix 2026-08-11). |
-| `PUBLIC_MALLKI_API_BASE` | `descargaComprobante.ts:3` | **NO está en `render.yaml`** → hoy depende del fallback hardcodeado a producción. |
+| `PUBLIC_SITE_URL` | `astro.config.mjs` → `site` (canonical + sitemap) | El deploy no la fija: `astro.config.mjs` usa `https://consultas.mallki-facturas.cloud` como fallback → aunque la variable falte, **nunca** se publica localhost (fix 2026-08-11). |
+| `PUBLIC_MALLKI_API_BASE` | `descargaComprobante.ts:3` | **El deploy no la fija** → hoy depende del fallback hardcodeado a producción. |
 
-**Render** (`render.yaml`): `type: web`, `runtime: static`,
-`buildCommand: npm ci && npm run build`, `staticPublishPath: dist`.
+**Deploy** (`.github/workflows/deploy.yml`): `npm ci && npm run build`, y `dist/` por `rsync --delete`.
 
 ---
 
@@ -102,7 +101,7 @@ npm run preview
 | D1 | ~~Páginas del theme con datos ficticios~~ | ✅ | **RESUELTO 2026-08-11**: borrados `about.astro`, `contact.astro`, `works/`, `src/content/` (6 casos + imágenes), `src/components/sections/` completo, los elements exclusivos del theme (Work, ImageContainer, ContainerBottom, Dropdown, ResumeDropdown), `markdown.css`, `content.config.ts`, `peter.jpg/peter2.jpg`, `assets/work-card/` y `assets/ui/`. El build genera SOLO `/` y `/404`. |
 | D2 | ~~Sitemap con páginas fake indexables~~ | ✅ | **RESUELTO 2026-08-11** (consecuencia de D1): `sitemap-0.xml` contiene **una sola URL** (`https://consultas.mallki-facturas.cloud/`). Verificado en el build. |
 | D3 | ~~Sitemap con `localhost` si falta la env~~ | ✅ | **RESUELTO 2026-08-11**: el fallback de `astro.config.mjs` pasó de `http://localhost:4321` al dominio real `https://consultas.mallki-facturas.cloud`, y `render.yaml` ahora fija `PUBLIC_SITE_URL` con `value:` (ya no `sync: false` manual). localhost es imposible de publicar. |
-| D4 | `PUBLIC_MALLKI_API_BASE` no declarada en `render.yaml` | 🟡 | Funciona por el fallback, pero apuntar a un backend de pruebas obliga a editar código en vez de una env var. |
+| D4 | `PUBLIC_MALLKI_API_BASE` no declarada en el deploy | 🟡 | Funciona por el fallback, pero apuntar a un backend de pruebas obliga a editar código en vez de una env var. |
 | D5 | ~~404 en inglés~~ | ✅ | RESUELTO 2026-08-11: 404 en español, con CTA "Ir a la página de descarga". |
 | D6 | ~~README/LICENSE del theme~~ | ✅ | RESUELTO 2026-08-11: README propio del proyecto. **El `LICENSE` MIT (Jess Gaspar) SE CONSERVA A PROPÓSITO**: MIT exige mantener el aviso de copyright en las copias del software; borrarlo sería el problema legal, no la solución. El README lo referencia en "Créditos". |
 | D7 | ~~Artefacto huérfano dist/guia~~ | ✅ | RESUELTO 2026-08-11: el svg era basura de build viejo, pero la carpeta reaparecía en builds frescos porque existía un directorio VACÍO public/guia/ (invisible a find -type f) que Astro copiaba tal cual. Eliminado; el build fresco ya no genera dist/guia (verificado). |
@@ -152,5 +151,4 @@ el mapa de errores en español, el saneado del `filename` y el fallback de CORS.
   MIT y exige conservar el aviso de copyright. Borrarlo crearía el problema legal que
   se quiso evitar. La atribución vive en `LICENSE` + "Créditos" del README.
 - ❌ **"`localhost:4321` puede aparecer en el sitemap"** → **YA NO** (D3, 2026-08-11): el
-  fallback del config ES el dominio real y `render.yaml` fija la variable. Para publicar
-  localhost habría que escribirlo a mano.
+  fallback del config ES el dominio real. Para publicar localhost habría que escribirlo a mano.

@@ -5,7 +5,7 @@ con el **código de descarga de 8 caracteres** que figura impreso en su ticket.
 Descarga un ZIP con el PDF, el XML UBL firmado y (si ya está disponible) la
 constancia de recepción de SUNAT (CDR).
 
-- **Dominio:** https://consultas.mallki-facturas.cloud (deploy en Render, `render.yaml`)
+- **Dominio:** https://consultas.mallki-facturas.cloud (se publica en la VPS con cada push a `main`)
 - **API que consume:** `GET /api/v1/documentos/publico/zip` del backend Mallki
   (ver `src/lib/descargaComprobante.ts`). No requiere sesión.
 
@@ -21,8 +21,7 @@ npm run preview   # previsualizar el build
 ## Configuración
 
 - `PUBLIC_SITE_URL` — dominio público para el sitemap y los canonicals.
-  Ya viene fijado en `render.yaml`; el `astro.config.mjs` usa el mismo valor
-  como fallback (nunca publica localhost).
+  El `astro.config.mjs` trae ese valor como fallback (nunca publica localhost).
 
 ## Estructura
 
